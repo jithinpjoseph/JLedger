@@ -105,7 +105,8 @@
     position:relative;
   }
   .total-stamp .lbl{font-family:var(--font-mono); font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted);}
-  .total-stamp .amt{font-family:var(--font-mono); font-size:26px; font-weight:700; color:var(--gold-2); line-height:1.2;}
+  .total-stamp .amt{font-family:var(--font-mono); font-size:26px; font-weight:700; color:var(--gold-2); line-height:1.25; word-break:break-word;}
+  .total-stamp .amt.multi{font-size:17px;}
 
   .month-nav{
     display:flex; align-items:center; gap:10px; margin-top:18px;
@@ -302,6 +303,41 @@
   .bar-item .bi-top .amt{font-family:var(--font-mono); color:var(--muted);}
   .bar-track{height:6px; border-radius:4px; background:var(--surface-2); overflow:hidden;}
   .bar-fill{height:100%; border-radius:4px; background:var(--cat-color);}
+
+  .notify-btn{
+    width:26px; height:26px; border-radius:8px; background:var(--surface-2); border:1px solid var(--line);
+    color:var(--faint); display:flex; align-items:center; justify-content:center;
+  }
+  .notify-btn svg{width:13px; height:13px;}
+  .notify-btn.on{ background:rgba(228,166,60,0.16); border-color:var(--gold); color:var(--gold-2); }
+
+  .rec-row{
+    display:flex; align-items:center; gap:10px; padding:10px 0;
+    border-bottom:1px solid var(--line);
+  }
+  .rec-row:last-child{ border-bottom:none; }
+  .rec-info{ flex:1; min-width:0; }
+  .rec-name{ font-size:13.5px; font-weight:600; color:var(--text); }
+  .rec-meta{ font-family:var(--font-mono); font-size:11px; color:var(--muted); margin-top:2px; }
+  .due-badge{
+    font-family:var(--font-mono); font-size:10px; font-weight:700; padding:3px 9px; border-radius:12px;
+    white-space:nowrap; flex:0 0 auto;
+  }
+  .due-badge.overdue{ background:rgba(181,83,60,0.18); color:#e08669; }
+  .due-badge.today{ background:rgba(228,166,60,0.18); color:var(--gold-2); }
+  .due-badge.soon{ background:rgba(228,166,60,0.1); color:var(--gold-2); }
+  .due-badge.later{ background:var(--surface-2); color:var(--faint); }
+  .due-badge.paid{ background:rgba(76,122,93,0.18); color:#7fb897; }
+  .rec-actions{ display:flex; gap:2px; flex:0 0 auto; }
+  .rec-actions button{
+    width:26px; height:26px; border:none; background:none; color:var(--faint); border-radius:7px;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .rec-actions button:hover{ background:var(--surface-2); color:var(--text); }
+  .rec-actions button.pay-btn:hover{ color:var(--cardamom); }
+  .rec-actions button.del-rec-btn:hover{ color:var(--rust); }
+  .rec-actions svg{ width:14px; height:14px; }
+  .rec-empty{ font-size:12.5px; color:var(--faint); padding:4px 0; }
 
   .trend-chart{ display:flex; align-items:flex-end; gap:10px; height:140px; padding-top:10px; }
   .trend-col{ flex:1; display:flex; flex-direction:column; align-items:center; gap:6px; height:100%; justify-content:flex-end; }
@@ -715,6 +751,24 @@
 <!-- ===================== INSIGHTS VIEW ===================== -->
 <div id="insightsView" style="display:none">
   <div class="list-wrap" style="padding-top:6px;">
+
+    <div class="side-card">
+      <h3>Subscriptions & recharges
+        <button id="notifyBtn" class="notify-btn" title="Enable browser reminders">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg>
+        </button>
+      </h3>
+      <div class="quick-add" style="margin-bottom:10px;">
+        <input id="recName" type="text" placeholder="e.g. Netflix, Mobile recharge" autocomplete="off">
+        <input id="recAmount" type="number" min="0" step="0.01" placeholder="Amount" inputmode="decimal" style="max-width:92px; background:var(--surface); border:1px solid var(--line); color:var(--text); border-radius:11px; padding:0 10px; font-size:14px;">
+        <select id="recDay" style="background:var(--surface); border:1px solid var(--line); color:var(--text); border-radius:11px; padding:0 8px; font-size:13px; max-width:78px;"></select>
+        <button id="recAddBtn" aria-label="Add subscription">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        </button>
+      </div>
+      <div id="recurringList"></div>
+    </div>
+
     <div class="side-card">
       <h3>Monthly spend trend<span style="font-weight:400; text-transform:none; letter-spacing:0; color:var(--faint);" id="trendRange">Last 6 months</span></h3>
       <div id="trendChart" class="trend-chart"></div>
@@ -850,6 +904,23 @@
     const v = Number(n)||0;
     return currency + v.toLocaleString(undefined,{minimumFractionDigits: v%1===0?0:2, maximumFractionDigits:2});
   }
+  function fmtWith(sym, n){
+    const v = Number(n)||0;
+    return sym + v.toLocaleString(undefined,{minimumFractionDigits: v%1===0?0:2, maximumFractionDigits:2});
+  }
+  // groups purchases by the currency each was logged in; shows a single total normally,
+  // or "S$120 + ₹2,400" when a month has purchases in more than one currency (e.g. traveling)
+  function sumByCurrency(arr){
+    const groups = {};
+    arr.forEach(p=>{
+      const sym = p.currency || currency; // older entries logged before per-purchase currency existed
+      groups[sym] = (groups[sym]||0) + Number(p.price||0);
+    });
+    const entries = Object.entries(groups);
+    if (!entries.length) return fmt(0);
+    if (entries.length === 1) return fmtWith(entries[0][0], entries[0][1]);
+    return entries.sort((a,b)=>b[1]-a[1]).map(([sym,val])=> fmtWith(sym,val)).join(' + ');
+  }
   function pad(n){return String(n).padStart(2,'0');}
   function dateKey(d){ return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
   function monthKey(d){ return `${d.getFullYear()}-${pad(d.getMonth()+1)}`; }
@@ -936,12 +1007,15 @@
     const list = filteredPurchases();
     const monthAll = monthPurchases();
     const monthTotal = monthAll.reduce((s,p)=>s+Number(p.price||0),0);
-    monthTotalEl.textContent = fmt(monthTotal);
+    const monthCurrencyCount = new Set(monthAll.map(p=>p.currency||currency)).size;
+    monthTotalEl.textContent = sumByCurrency(monthAll);
+    monthTotalEl.classList.toggle('multi', monthCurrencyCount > 1);
 
     // stats
     const todayKey = dateKey(now);
-    const todayTotal = monthAll.filter(p=>p.date===todayKey).reduce((s,p)=>s+Number(p.price||0),0);
-    $('statToday').textContent = fmt(todayTotal);
+    const todaysPurchases = monthAll.filter(p=>p.date===todayKey);
+    const todayTotal = todaysPurchases.reduce((s,p)=>s+Number(p.price||0),0);
+    $('statToday').textContent = sumByCurrency(todaysPurchases);
     $('statCount').textContent = monthAll.length;
     const daysElapsed = isSameMonth(todayKey, viewDate) ? now.getDate() : new Date(viewDate.getFullYear(), viewDate.getMonth()+1, 0).getDate();
     $('statAvg').textContent = fmt(monthTotal / Math.max(daysElapsed,1));
@@ -1128,6 +1202,7 @@
       showToast('Purchase updated');
     } else {
       data.id = Date.now();
+      data.currency = currency; // remembers which currency was active when this purchase was logged
       purchases.push(data);
       showToast('Added to ledger');
     }
@@ -1651,8 +1726,136 @@
   $('tabLedgerBtn').onclick = ()=> showTab('ledger');
   $('tabInsightsBtn').onclick = ()=> showTab('insights');
 
+  /* ---------------- Subscriptions & recharges ---------------- */
+  const REC_KEY = 'marketLedger.recurring.v1';
+  let recurring = JSON.parse(localStorage.getItem(REC_KEY) || '[]');
+  function saveRecurring(){ localStorage.setItem(REC_KEY, JSON.stringify(recurring)); }
+
+  // populate the day-of-month picker once
+  const recDaySelect = $('recDay');
+  for (let d=1; d<=31; d++){
+    const o = document.createElement('option');
+    o.value = d; o.textContent = `Day ${d}`;
+    recDaySelect.appendChild(o);
+  }
+
+  function dueInfo(day){
+    const now = new Date();
+    const y = now.getFullYear(), m = now.getMonth();
+    const lastDay = new Date(y, m+1, 0).getDate();
+    const dueDay = Math.min(Number(day), lastDay);
+    const dueDate = new Date(y, m, dueDay);
+    const todayMidnight = new Date(y, m, now.getDate());
+    const diffDays = Math.round((dueDate - todayMidnight) / 86400000);
+    return { dueDate, diffDays, dueDay };
+  }
+
+  function renderRecurring(){
+    const list = $('recurringList');
+    list.innerHTML = '';
+    if (!recurring.length){
+      list.innerHTML = '<div class="rec-empty">No subscriptions yet — add your mobile recharge, Netflix, gym, rent, etc. below.</div>';
+      return;
+    }
+    const nowMonthKey = monthKey(new Date());
+    const sorted = [...recurring].sort((a,b)=> dueInfo(a.day).diffDays - dueInfo(b.day).diffDays);
+    sorted.forEach(item=>{
+      const { diffDays, dueDay } = dueInfo(item.day);
+      const paidThisMonth = item.lastPaidMonth === nowMonthKey;
+      let badgeClass, badgeText;
+      if (paidThisMonth){ badgeClass = 'paid'; badgeText = 'Paid'; }
+      else if (diffDays < 0){ badgeClass = 'overdue'; badgeText = `${Math.abs(diffDays)}d overdue`; }
+      else if (diffDays === 0){ badgeClass = 'today'; badgeText = 'Due today'; }
+      else if (diffDays <= 3){ badgeClass = 'soon'; badgeText = `Due in ${diffDays}d`; }
+      else { badgeClass = 'later'; badgeText = `Day ${dueDay}`; }
+
+      const row = document.createElement('div');
+      row.className = 'rec-row';
+      row.innerHTML = `
+        <div class="rec-info">
+          <div class="rec-name">${escapeHtml(item.name)}</div>
+          <div class="rec-meta">${fmt(item.amount)} · every month on day ${item.day}</div>
+        </div>
+        <span class="due-badge ${badgeClass}">${badgeText}</span>
+        <div class="rec-actions">
+          <button class="pay-btn" title="Mark paid & log to ledger"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></button>
+          <button class="del-rec-btn" title="Delete subscription"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2m2 0l-1 14a1 1 0 01-1 1H7a1 1 0 01-1-1L5 6"/></svg></button>
+        </div>`;
+      row.querySelector('.pay-btn').onclick = ()=> markRecurringPaid(item);
+      row.querySelector('.del-rec-btn').onclick = ()=>{
+        if (!confirm(`Delete "${item.name}" from your subscriptions?`)) return;
+        recurring = recurring.filter(r=>r.id!==item.id);
+        saveRecurring(); renderRecurring();
+      };
+      list.appendChild(row);
+    });
+  }
+
+  function markRecurringPaid(item){
+    purchases.push({
+      id: Date.now(),
+      item: item.name,
+      category: 'others',
+      qty: null,
+      unit: '',
+      price: Number(item.amount),
+      date: dateKey(new Date()),
+      store: 'Subscription',
+      currency: currency
+    });
+    item.lastPaidMonth = monthKey(new Date());
+    save(); saveRecurring();
+    render(); renderRecurring();
+    showToast(`${item.name} logged to ledger`);
+  }
+
+  $('recAddBtn').onclick = ()=>{
+    const name = $('recName').value.trim();
+    const amount = Number($('recAmount').value);
+    const day = Number(recDaySelect.value);
+    if (!name || !amount) return;
+    recurring.push({ id: Date.now(), name, amount, day, lastPaidMonth: null });
+    saveRecurring(); renderRecurring();
+    $('recName').value = ''; $('recAmount').value = '';
+    showToast('Subscription added');
+  };
+
+  // browser reminder notifications (works while the app/tab is open or in background on the same device)
+  function updateNotifyBtn(){
+    const btn = $('notifyBtn');
+    const on = ('Notification' in window) && Notification.permission === 'granted';
+    btn.classList.toggle('on', on);
+  }
+  $('notifyBtn').onclick = ()=>{
+    if (!('Notification' in window)){ showToast('Notifications not supported on this browser'); return; }
+    if (Notification.permission === 'granted'){ showToast('Reminders already enabled'); return; }
+    Notification.requestPermission().then(perm=>{
+      updateNotifyBtn();
+      showToast(perm === 'granted' ? 'Reminders enabled' : 'Reminders not enabled');
+    });
+  };
+  updateNotifyBtn();
+
+  function checkDueReminders(){
+    if (!recurring.length) return;
+    const nowMonthKey = monthKey(new Date());
+    const due = recurring.filter(item=>{
+      if (item.lastPaidMonth === nowMonthKey) return false;
+      return dueInfo(item.day).diffDays <= 0;
+    });
+    if (!due.length) return;
+    const names = due.map(d=>d.name).join(', ');
+    showToast(`Due: ${names}`);
+    if ('Notification' in window && Notification.permission === 'granted'){
+      try{
+        new Notification('Jledger — payment due', { body: names, tag: 'jledger-due-' + nowMonthKey });
+      }catch(e){ /* ignore */ }
+    }
+  }
+
   /* ---------------- Insights: trend chart + store + category mix ---------------- */
   function renderInsights(){
+    renderRecurring();
     // last 6 months, current month last
     const months = [];
     for (let i=5; i>=0; i--){
@@ -1807,6 +2010,7 @@
   render();
   renderList();
   showTab('list');
+  setTimeout(checkDueReminders, 800);
 })();
 </script>
 <script>
