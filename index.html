@@ -457,6 +457,34 @@
   .quick-add button:active{ transform:scale(0.92); }
   .quick-add button svg{width:18px; height:18px;}
 
+  .quick-log-wrap{ max-width:960px; margin:20px auto 0; padding:0 20px; }
+  .quick-log{
+    display:flex; align-items:center; gap:6px;
+    background:var(--surface); border:1px solid var(--line); border-radius:16px;
+    padding:6px 6px 6px 16px;
+    box-shadow:0 10px 24px -16px rgba(0,0,0,0.55);
+    transition:border-color .15s, box-shadow .15s;
+  }
+  .quick-log:focus-within{
+    border-color:var(--gold);
+    box-shadow:0 0 0 3px rgba(228,166,60,0.14), 0 10px 24px -16px rgba(0,0,0,0.55);
+  }
+  .quick-log input{
+    background:none; border:none; color:var(--text); font-size:15px; padding:11px 0; outline:none; min-width:0;
+  }
+  .quick-log input::placeholder{ color:var(--faint); }
+  .quick-log input#qlItem{ flex:1.5; }
+  .quick-log input#qlAmount{ flex:1; text-align:right; }
+  .ql-divider{ width:1px; height:20px; background:var(--line-strong); flex:0 0 auto; }
+  .quick-log button{
+    background:linear-gradient(155deg, var(--gold-2), var(--gold)); border:none; color:#1a1a12;
+    width:40px; height:40px; border-radius:12px; display:flex; align-items:center; justify-content:center; flex:0 0 auto;
+    transition:transform .1s;
+  }
+  .quick-log button:active{ transform:scale(0.92); }
+  .quick-log button svg{ width:18px; height:18px; }
+  .quick-log-hint{ font-size:11px; color:var(--faint); margin:8px 4px 0; line-height:1.4; }
+
   .suggest-label{font-family:var(--font-mono); font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:var(--faint); margin:2px 0 8px;}
   .suggest-row{display:flex; gap:7px; overflow-x:auto; padding-bottom:14px; scrollbar-width:none;}
   .suggest-row::-webkit-scrollbar{display:none;}
@@ -682,6 +710,19 @@
 
 <!-- ===================== LEDGER VIEW ===================== -->
 <div id="ledgerView">
+
+<div class="quick-log-wrap">
+  <div class="quick-log">
+    <input id="qlItem" type="text" placeholder="Item" autocomplete="off">
+    <span class="ql-divider"></span>
+    <input id="qlAmount" type="number" min="0" step="0.01" placeholder="Amount" inputmode="decimal">
+    <button id="qlAddBtn" aria-label="Log purchase">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+    </button>
+  </div>
+  <div class="quick-log-hint">Fastest way to log while you're at the till — category is guessed automatically. Tap the + button below for quantity, unit, store, or a different date.</div>
+</div>
+
 <div class="stats">
   <div class="stat-card"><div class="k">Today</div><div class="v" id="statToday">₹0</div></div>
   <div class="stat-card"><div class="k">Entries</div><div class="v small" id="statCount">0</div></div>
@@ -1077,12 +1118,27 @@
     // receipt list
     receiptBody.innerHTML = '';
     if (!list.length){
-      receiptBody.innerHTML = `
-        <div class="empty-receipt">
-          <svg class="em-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6 3h12l-1 16-5 2-5-2L6 3z"/><path d="M9 8h6M9 12h6"/></svg>
-          <div class="em-t">Nothing logged yet</div>
-          <div class="em-s">Tap the + button to add your first purchase.</div>
-        </div>`;
+      const isFiltered = activeCategory !== 'all' || searchTerm.trim() !== '';
+      if (isFiltered && monthAll.length){
+        receiptBody.innerHTML = `
+          <div class="empty-receipt">
+            <svg class="em-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+            <div class="em-t">No matches for this filter</div>
+            <div class="em-s">You have ${monthAll.length} purchase${monthAll.length===1?'':'s'} logged this month — they're just hidden by the current category or search filter.</div>
+            <button id="clearFilterBtn" class="submit-btn" style="margin-top:16px; padding:11px 22px; width:auto;">Clear filter</button>
+          </div>`;
+        $('clearFilterBtn').onclick = ()=>{
+          activeCategory = 'all'; searchTerm = ''; $('searchInput').value = '';
+          render();
+        };
+      } else {
+        receiptBody.innerHTML = `
+          <div class="empty-receipt">
+            <svg class="em-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6 3h12l-1 16-5 2-5-2L6 3z"/><path d="M9 8h6M9 12h6"/></svg>
+            <div class="em-t">Nothing logged yet</div>
+            <div class="em-s">Tap the + button to add your first purchase.</div>
+          </div>`;
+      }
       return;
     }
     const groups = {};
@@ -1218,6 +1274,9 @@
     }
     save();
     viewDate = new Date(data.date+'T00:00:00');
+    activeCategory = 'all';
+    searchTerm = '';
+    $('searchInput').value = '';
 
     const sourceListId = $('purchaseForm').dataset.sourceListId;
     if (sourceListId){
@@ -1230,6 +1289,39 @@
     closeModalFn();
     render();
   });
+
+  /* ---------------- Quick log: fast one-line entry for logging while shopping ---------------- */
+  function quickLogSubmit(){
+    const name = $('qlItem').value.trim();
+    const amt = Number($('qlAmount').value);
+    if (!name || !amt || amt <= 0){
+      showToast(!name ? 'Enter an item name' : 'Enter an amount');
+      return;
+    }
+    const cat = findCategoryForName(name);
+    purchases.push({
+      id: Date.now(),
+      item: name,
+      category: cat,
+      qty: null,
+      unit: '',
+      price: amt,
+      date: dateKey(new Date()),
+      store: '',
+      currency: currency
+    });
+    activeCategory = 'all';
+    searchTerm = '';
+    $('searchInput').value = '';
+    viewDate = new Date();
+    save(); render();
+    $('qlItem').value = ''; $('qlAmount').value = '';
+    $('qlItem').focus();
+    showToast(`${name} logged`);
+  }
+  $('qlAddBtn').onclick = quickLogSubmit;
+  $('qlAmount').addEventListener('keydown', e=>{ if (e.key === 'Enter'){ e.preventDefault(); quickLogSubmit(); } });
+  $('qlItem').addEventListener('keydown', e=>{ if (e.key === 'Enter'){ e.preventDefault(); $('qlAmount').focus(); } });
 
   /* ---------------- Month nav ---------------- */
   $('prevMonth').onclick = ()=>{ viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth()-1, 1); render(); };
@@ -1814,6 +1906,10 @@
       currency: currency
     });
     item.lastPaidMonth = monthKey(new Date());
+    activeCategory = 'all';
+    searchTerm = '';
+    if ($('searchInput')) $('searchInput').value = '';
+    viewDate = new Date();
     save(); saveRecurring();
     render(); renderRecurring();
     showToast(`${item.name} logged to ledger`);
