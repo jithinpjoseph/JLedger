@@ -1450,7 +1450,9 @@
   }
 
   /* ---------------- Tab switching ---------------- */
+  let currentTab = 'list';
   function showTab(tab){
+    currentTab = tab;
     $('listView').style.display = tab==='list' ? '' : 'none';
     $('ledgerView').style.display = tab==='ledger' ? '' : 'none';
     $('insightsView').style.display = tab==='insights' ? '' : 'none';
@@ -1567,7 +1569,11 @@
       lines.push('');
     });
     if (done.length){
-      lines.push(`✓ Already in cart: ${done.map(i=>i.item).join(', ')}`);
+      lines.push(`✓ *Already in cart*`);
+      done.forEach(i=>{
+        const meta = i.qty ? ` (${i.qty}${i.unit?(' '+i.unit):''})` : '';
+        lines.push(`• ${i.item}${meta}`);
+      });
     }
     if (!open.length && !done.length) lines.push('(list is empty)');
     return lines.join('\n').trim();
@@ -1585,6 +1591,31 @@
       window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
     }
   };
+
+  /* ---------------- Device back button: close modal, return to List tab, double-back to exit ---------------- */
+  let exitArmed = false, exitTimer = null;
+  history.pushState({ jledger: true }, '', location.href);
+  window.addEventListener('popstate', ()=>{
+    if ($('overlay').classList.contains('show')){
+      closeModalFn();
+      history.pushState({ jledger: true }, '', location.href);
+      return;
+    }
+    if (currentTab !== 'list'){
+      showTab('list');
+      history.pushState({ jledger: true }, '', location.href);
+      return;
+    }
+    if (exitArmed){
+      // second back press at the list tab with nothing open — let it exit naturally
+      return;
+    }
+    exitArmed = true;
+    showToast('Press back again to exit');
+    history.pushState({ jledger: true }, '', location.href);
+    clearTimeout(exitTimer);
+    exitTimer = setTimeout(()=>{ exitArmed = false; }, 2200);
+  });
 
   /* ---------------- Init ---------------- */
   buildCatGrid();
