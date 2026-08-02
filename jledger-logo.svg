@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f0c169"/>
+      <stop offset="1" stop-color="#e4a63c"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.3" cy="0.15" r="0.9">
+      <stop offset="0" stop-color="#e4a63c" stop-opacity="0.16"/>
+      <stop offset="1" stop-color="#e4a63c" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- background -->
+  <rect width="512" height="512" rx="120" fill="#14150f"/>
+  <rect width="512" height="512" rx="120" fill="url(#glow)"/>
+  <rect x="10" y="10" width="492" height="492" rx="112" fill="none" stroke="url(#gold)" stroke-width="3" opacity="0.55"/>
+
+  <!-- monogram J -->
+  <text x="256" y="330" font-family="Georgia, 'Iowan Old Style', 'Palatino Linotype', serif"
+        font-size="270" text-anchor="middle" fill="url(#gold)">J</text>
+
+  <!-- receipt perforation mark, echoing the in-app ledger motif -->
+  <g stroke="url(#gold)" stroke-width="7" stroke-linecap="round" opacity="0.9">
+    <line x1="150" y1="392" x2="192" y2="392"/>
+    <line x1="216" y1="392" x2="296" y2="392" opacity="0.65"/>
+    <line x1="320" y1="392" x2="362" y2="392"/>
+  </g>
+</svg>
