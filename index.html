@@ -433,18 +433,29 @@
   /* ---------- Shopping list ---------- */
   .list-wrap{ max-width:960px; margin:20px auto 0; padding:0 20px 10px; }
   .quick-add{
-    display:flex; gap:8px; margin-bottom:14px;
+    display:flex; align-items:center; gap:10px;
+    background:var(--surface); border:1px solid var(--line); border-radius:16px;
+    padding:6px 6px 6px 16px; margin-bottom:16px;
+    box-shadow:0 10px 24px -16px rgba(0,0,0,0.55);
+    transition:border-color .15s, box-shadow .15s;
   }
+  .quick-add:focus-within{
+    border-color:var(--gold);
+    box-shadow:0 0 0 3px rgba(228,166,60,0.14), 0 10px 24px -16px rgba(0,0,0,0.55);
+  }
+  .qa-icon{ width:17px; height:17px; color:var(--faint); flex:0 0 auto; }
   .quick-add input[type=text]{
-    flex:1; background:var(--surface); border:1px solid var(--line); color:var(--text);
-    padding:12px 14px; border-radius:11px; font-size:14.5px; outline:none;
+    flex:1; min-width:0; background:none; border:none; color:var(--text);
+    padding:11px 0; font-size:15px; outline:none;
   }
-  .quick-add input[type=text]:focus{border-color:var(--gold);}
+  .quick-add input[type=text]::placeholder{ color:var(--faint); }
   .quick-add button{
     background:linear-gradient(155deg, var(--gold-2), var(--gold)); border:none; color:#1a1a12;
-    width:46px; border-radius:11px; display:flex; align-items:center; justify-content:center; flex:0 0 auto;
+    width:40px; height:40px; border-radius:12px; display:flex; align-items:center; justify-content:center; flex:0 0 auto;
+    transition:transform .1s;
   }
-  .quick-add button svg{width:19px; height:19px;}
+  .quick-add button:active{ transform:scale(0.92); }
+  .quick-add button svg{width:18px; height:18px;}
 
   .suggest-label{font-family:var(--font-mono); font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:var(--faint); margin:2px 0 8px;}
   .suggest-row{display:flex; gap:7px; overflow-x:auto; padding-bottom:14px; scrollbar-width:none;}
@@ -552,10 +563,8 @@
     .stats{grid-template-columns:repeat(2,1fr); gap:8px;}
     .stat-card{padding:10px 11px;}
     .stat-card .v{font-size:15px;}
-    .quick-add{flex-wrap:wrap;}
-    .quick-add input[type=text]{flex:1 1 100%;}
-    .quick-add select{flex:1; max-width:none;}
-    .quick-add button{flex:0 0 46px;}
+    .quick-add{ padding-left:12px; }
+    .qa-icon{ display:none; }
     .cat-grid{grid-template-columns:repeat(3,1fr);}
     .row{flex-wrap:wrap;}
     .row .leader{display:none;}
@@ -648,6 +657,7 @@
 <!-- ===================== SHOPPING LIST VIEW ===================== -->
 <div class="list-wrap" id="listView" style="display:none">
   <div class="quick-add">
+    <svg class="qa-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2l1.5 4M18 2l-1.5 4M3.5 6h17l-1.6 9a2 2 0 01-2 1.7H7.1a2 2 0 01-2-1.7L3.5 6z"/><circle cx="9" cy="21" r="1.3"/><circle cx="16" cy="21" r="1.3"/></svg>
     <input id="liName" type="text" placeholder="Add an item… e.g. Tomatoes" autocomplete="off">
     <button id="liAddBtn" aria-label="Add item">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
