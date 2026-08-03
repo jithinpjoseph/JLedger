@@ -430,6 +430,21 @@
   }
   .submit-btn:hover{filter:brightness(1.05);}
 
+  .confirm-modal{ text-align:center; padding-top:28px; }
+  .confirm-icon{
+    width:52px; height:52px; border-radius:50%; margin:0 auto 16px;
+    background:rgba(181,83,60,0.14); color:var(--rust);
+    display:flex; align-items:center; justify-content:center;
+  }
+  .confirm-icon svg{ width:24px; height:24px; }
+  .confirm-msg{ font-size:15px; line-height:1.5; color:var(--text); margin-bottom:22px; }
+  .confirm-actions{ display:flex; gap:10px; }
+  .confirm-btn{ flex:1; padding:13px; border-radius:11px; font-size:14.5px; font-weight:700; border:none; }
+  .confirm-btn.cancel{ background:var(--surface-2); color:var(--text); border:1px solid var(--line); }
+  .confirm-btn.cancel:hover{ border-color:var(--line-strong); }
+  .confirm-btn.ok{ background:linear-gradient(155deg, #d97a63, var(--rust)); color:#fff; }
+  .confirm-btn.ok:hover{ filter:brightness(1.08); }
+
   /* ---------- Shopping list ---------- */
   .list-wrap{ max-width:960px; margin:20px auto 0; padding:0 20px 10px; }
   .quick-add{
@@ -473,8 +488,9 @@
     background:none; border:none; color:var(--text); font-size:15px; padding:11px 0; outline:none; min-width:0;
   }
   .quick-log input::placeholder{ color:var(--faint); }
-  .quick-log input#qlItem{ flex:1.5; }
-  .quick-log input#qlAmount{ flex:1; text-align:right; }
+  .quick-log input#qlItem{ flex:1.6; min-width:0; }
+  .quick-log input#qlQty{ flex:0 0 52px; text-align:center; }
+  .quick-log input#qlAmount{ flex:0 0 72px; text-align:right; }
   .ql-divider{ width:1px; height:20px; background:var(--line-strong); flex:0 0 auto; }
   .quick-log button{
     background:linear-gradient(155deg, var(--gold-2), var(--gold)); border:none; color:#1a1a12;
@@ -715,12 +731,14 @@
   <div class="quick-log">
     <input id="qlItem" type="text" placeholder="Item" autocomplete="off">
     <span class="ql-divider"></span>
+    <input id="qlQty" type="text" placeholder="Qty" autocomplete="off">
+    <span class="ql-divider"></span>
     <input id="qlAmount" type="number" min="0" step="0.01" placeholder="Amount" inputmode="decimal">
     <button id="qlAddBtn" aria-label="Log purchase">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
     </button>
   </div>
-  <div class="quick-log-hint">Fastest way to log while you're at the till — category is guessed automatically. Tap the + button below for quantity, unit, store, or a different date.</div>
+  <div class="suggest-row" id="qlSuggestRow" style="margin-top:10px;"></div>
 </div>
 
 <div class="stats">
@@ -895,6 +913,38 @@
       <input id="currencySearch" type="text" placeholder="Search country or currency…" autocomplete="off">
     </div>
     <div id="currencyList" class="currency-list"></div>
+  </div>
+</div>
+
+<div class="overlay" id="confirmOverlay">
+  <div class="modal confirm-modal">
+    <div class="confirm-icon" id="confirmIcon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2m2 0l-1 14a1 1 0 01-1 1H7a1 1 0 01-1-1L5 6"/></svg>
+    </div>
+    <div class="confirm-msg" id="confirmMsg">Are you sure?</div>
+    <div class="confirm-actions">
+      <button id="confirmCancelBtn" class="confirm-btn cancel">Cancel</button>
+      <button id="confirmOkBtn" class="confirm-btn ok">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="qtyEditOverlay">
+  <div class="modal">
+    <h2>Edit quantity
+      <button id="closeQtyModal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+    </h2>
+    <div class="field-row">
+      <div class="field">
+        <label>Quantity</label>
+        <input id="qtyEditQty" type="text" placeholder="e.g. 2">
+      </div>
+      <div class="field">
+        <label>Unit</label>
+        <input id="qtyEditUnit" type="text" placeholder="kg, pcs, L…">
+      </div>
+    </div>
+    <button type="button" class="submit-btn" id="qtyEditSave">Save</button>
   </div>
 </div>
 
@@ -1187,10 +1237,11 @@
 
   /* ---------------- CRUD ---------------- */
   function removePurchase(id){
-    if (!confirm('Remove this purchase from the ledger?')) return;
-    purchases = purchases.filter(p=>p.id!==id);
-    save(); render();
-    showToast('Purchase removed');
+    showConfirm('Remove this purchase from the ledger?', ()=>{
+      purchases = purchases.filter(p=>p.id!==id);
+      save(); render();
+      showToast('Purchase removed');
+    });
   }
 
   function openEdit(id){
@@ -1252,11 +1303,18 @@
   $('purchaseForm').addEventListener('submit', e=>{
     e.preventDefault();
     const id = $('editId').value;
+    const itemName = $('fItem').value.trim();
+    let qty = $('fQty').value ? Number($('fQty').value) : null;
+    let unit = $('fUnit').value.trim();
+    if (qty !== null && !unit){
+      const guess = autoFormatQty(itemName, String(qty));
+      unit = guess.unit;
+    }
     const data = {
-      item: $('fItem').value.trim(),
+      item: itemName,
       category: selectedFormCat,
-      qty: $('fQty').value ? Number($('fQty').value) : null,
-      unit: $('fUnit').value.trim(),
+      qty: qty,
+      unit: unit,
       price: Number($('fPrice').value),
       date: $('fDate').value,
       store: $('fStore').value.trim()
@@ -1293,18 +1351,20 @@
   /* ---------------- Quick log: fast one-line entry for logging while shopping ---------------- */
   function quickLogSubmit(){
     const name = $('qlItem').value.trim();
+    const qtyRaw = $('qlQty').value.trim();
     const amt = Number($('qlAmount').value);
     if (!name || !amt || amt <= 0){
       showToast(!name ? 'Enter an item name' : 'Enter an amount');
       return;
     }
     const cat = findCategoryForName(name);
+    const { qty, unit } = autoFormatQty(name, qtyRaw);
     purchases.push({
       id: Date.now(),
       item: name,
       category: cat,
-      qty: null,
-      unit: '',
+      qty: qty,
+      unit: unit,
       price: amt,
       date: dateKey(new Date()),
       store: '',
@@ -1315,13 +1375,56 @@
     $('searchInput').value = '';
     viewDate = new Date();
     save(); render();
-    $('qlItem').value = ''; $('qlAmount').value = '';
+    $('qlItem').value = ''; $('qlQty').value = ''; $('qlAmount').value = '';
     $('qlItem').focus();
-    showToast(`${name} logged`);
+    showToast(unit ? `${name} logged — ${qty}${unit}` : `${name} logged`);
+    buildQlSuggestions('');
   }
   $('qlAddBtn').onclick = quickLogSubmit;
   $('qlAmount').addEventListener('keydown', e=>{ if (e.key === 'Enter'){ e.preventDefault(); quickLogSubmit(); } });
-  $('qlItem').addEventListener('keydown', e=>{ if (e.key === 'Enter'){ e.preventDefault(); $('qlAmount').focus(); } });
+  $('qlQty').addEventListener('keydown', e=>{ if (e.key === 'Enter'){ e.preventDefault(); $('qlAmount').focus(); } });
+  $('qlItem').addEventListener('keydown', e=>{ if (e.key === 'Enter'){ e.preventDefault(); $('qlQty').focus(); } });
+
+  function lastPriceFor(name){
+    const lname = name.trim().toLowerCase();
+    if (!lname) return null;
+    const matches = purchases
+      .filter(p => p.item.trim().toLowerCase() === lname)
+      .sort((a,b)=> b.date.localeCompare(a.date));
+    return matches.length ? matches[0] : null;
+  }
+
+  function buildQlSuggestions(query){
+    const row = $('qlSuggestRow');
+    row.innerHTML = '';
+    const q = (query||'').trim().toLowerCase();
+    const customNames = new Set(customItems.map(ci=>ci.name.toLowerCase()));
+    const pool = [
+      ...customItems.map(ci=>({...ci, isCustom:true})),
+      ...COMMON_ITEMS.filter(ci=>!customNames.has(ci.name.toLowerCase()))
+    ];
+    let results = !q ? pool.slice(0, 12) : pool.filter(ci=>ci.name.toLowerCase().includes(q)).slice(0, 12);
+    if (q) results.sort((a,b)=> a.name.toLowerCase().indexOf(q) - b.name.toLowerCase().indexOf(q));
+
+    results.forEach(ci=>{
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'suggest-chip' + (ci.isCustom ? ' custom' : '');
+      chip.innerHTML = `<span>${escapeHtml(ci.name)}</span>`;
+      chip.onclick = ()=>{
+        $('qlItem').value = ci.name;
+        const last = lastPriceFor(ci.name);
+        if (last){
+          $('qlAmount').value = last.price;
+          $('qlQty').value = last.qty ? `${last.qty}${last.unit?(' '+last.unit):''}` : '';
+        }
+        $('qlAmount').focus();
+        $('qlAmount').select();
+      };
+      row.appendChild(chip);
+    });
+  }
+  $('qlItem').addEventListener('input', e=> buildQlSuggestions(e.target.value));
 
   /* ---------------- Month nav ---------------- */
   $('prevMonth').onclick = ()=>{ viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth()-1, 1); render(); };
@@ -1467,8 +1570,8 @@
           currency = data.currency || currency;
           save(); render(); updateCurrencyButtons();
           showToast('Backup imported');
-        } else { alert('This file does not look like a Jledger backup.'); }
-      } catch(err){ alert('Could not read this file.'); }
+        } else { showToast('This file does not look like a Jledger backup'); }
+      } catch(err){ showToast('Could not read this file'); }
     };
     reader.readAsText(file);
     e.target.value = '';
@@ -1479,21 +1582,24 @@
     const inMonth = monthPurchases();
     if (!inMonth.length){ showToast('No purchases to delete this month'); return; }
     const label = `${MONTHS[viewDate.getMonth()]} ${viewDate.getFullYear()}`;
-    if (!confirm(`Delete all ${inMonth.length} purchase${inMonth.length===1?'':'s'} logged in ${label}? This can't be undone.`)) return;
-    const idsToRemove = new Set(inMonth.map(p=>p.id));
-    purchases = purchases.filter(p=>!idsToRemove.has(p.id));
-    save(); render();
-    showToast(`${label} purchases deleted`);
+    showConfirm(`Delete all ${inMonth.length} purchase${inMonth.length===1?'':'s'} logged in ${label}? This can't be undone.`, ()=>{
+      const idsToRemove = new Set(inMonth.map(p=>p.id));
+      purchases = purchases.filter(p=>!idsToRemove.has(p.id));
+      save(); render();
+      showToast(`${label} purchases deleted`);
+    });
   };
 
   $('clearAllBtn').onclick = ()=>{
     if (!purchases.length){ showToast('No purchase data to delete'); return; }
-    if (!confirm(`Delete all ${purchases.length} purchases from the ledger, across every month? This can't be undone.`)) return;
-    if (!confirm('Are you absolutely sure? Consider exporting a backup first. This will permanently erase your entire purchase history.')) return;
-    purchases = [];
-    budgets = {};
-    save(); render();
-    showToast('All purchase data deleted');
+    showConfirm(`Delete all ${purchases.length} purchases from the ledger, across every month? This can't be undone.`, ()=>{
+      showConfirm('Are you absolutely sure? Consider exporting a backup first. This will permanently erase your entire purchase history.', ()=>{
+        purchases = [];
+        budgets = {};
+        save(); render();
+        showToast('All purchase data deleted');
+      });
+    });
   };
 
   /* ---------------- Toast ---------------- */
@@ -1505,6 +1611,59 @@
     clearTimeout(toastTimer);
     toastTimer = setTimeout(()=> t.classList.remove('show'), 2200);
   }
+
+  /* ---------------- Reliable in-app confirm (replaces window.confirm, which can silently
+     fail — auto-rejecting with no visible dialog — inside installed/standalone PWAs) ---------------- */
+  function showConfirm(message, onConfirm){
+    $('confirmMsg').textContent = message;
+    $('confirmOverlay').classList.add('show');
+    document.body.style.overflow = 'hidden';
+    const okBtn = $('confirmOkBtn');
+    const cancelBtn = $('confirmCancelBtn');
+    function cleanup(){
+      $('confirmOverlay').classList.remove('show');
+      document.body.style.overflow = '';
+      okBtn.onclick = null; cancelBtn.onclick = null;
+    }
+    okBtn.onclick = ()=>{ cleanup(); onConfirm(); };
+    cancelBtn.onclick = ()=> cleanup();
+  }
+  $('confirmOverlay').addEventListener('click', e=>{
+    if (e.target.id === 'confirmOverlay'){
+      $('confirmOverlay').classList.remove('show');
+      document.body.style.overflow = '';
+    }
+  });
+
+  /* ---------------- In-app quantity/unit editor (replaces window.prompt, same reliability issue) ---------------- */
+  let qtyEditTarget = null;
+  function showQtyEdit(item){
+    qtyEditTarget = item;
+    $('qtyEditQty').value = item.qty || '';
+    $('qtyEditUnit').value = item.unit || '';
+    $('qtyEditOverlay').classList.add('show');
+    document.body.style.overflow = 'hidden';
+    $('qtyEditQty').focus();
+  }
+  function closeQtyEdit(){
+    $('qtyEditOverlay').classList.remove('show');
+    document.body.style.overflow = '';
+    qtyEditTarget = null;
+  }
+  $('closeQtyModal').onclick = closeQtyEdit;
+  $('qtyEditOverlay').addEventListener('click', e=>{ if (e.target.id==='qtyEditOverlay') closeQtyEdit(); });
+  $('qtyEditSave').onclick = ()=>{
+    if (!qtyEditTarget) return;
+    const q = $('qtyEditQty').value.trim();
+    let u = $('qtyEditUnit').value.trim();
+    if (q && !u && !isNaN(Number(q))){
+      u = autoFormatQty(qtyEditTarget.item, q).unit;
+    }
+    qtyEditTarget.qty = q ? (isNaN(Number(q)) ? q : Number(q)) : null;
+    qtyEditTarget.unit = u;
+    saveList(); renderList();
+    closeQtyEdit();
+  };
 
   /* ---------------- Shopping list ---------------- */
   const LIST_KEY = 'marketLedger.shoppingList.v1';
@@ -1573,6 +1732,57 @@
     const custom = customItems.find(ci=>ci.name.toLowerCase()===lname);
     if (custom) return custom.cat;
     return 'others';
+  }
+
+  /* ---------------- Auto unit detection ----------------
+     Guesses a sensible unit (kg/g/L/ml/pcs) from a plain number, based on how
+     that item is normally bought. Typing a unit yourself (e.g. "500g", "2kg")
+     always overrides the guess. */
+  const MEASURE_OVERRIDES = {
+    // bulk staples — plain number always means kg (10kg rice sacks, etc.)
+    'rice':'bulk', 'atta (wheat flour)':'bulk', 'toor dal':'bulk', 'moong dal':'bulk',
+    'chana dal':'bulk', 'urad dal':'bulk', 'sugar':'bulk', 'salt':'bulk',
+    'jaggery':'bulk', 'rajma':'bulk', 'chana':'bulk',
+    // small packets — plain number always means grams
+    'besan':'packet', 'poha':'packet', 'sooji (rava)':'packet', 'vermicelli':'packet',
+    'turmeric powder':'packet', 'red chilli powder':'packet', 'garam masala':'packet',
+    'cumin seeds':'packet', 'mustard seeds':'packet', 'coriander powder':'packet',
+    'tamarind':'packet', 'tea':'packet', 'coffee':'packet',
+    'butter':'packet', 'ghee':'packet', 'paneer':'packet', 'cheese':'packet',
+    // liquids — small number = liters, large round number = ml
+    'milk':'liquid', 'buttermilk':'liquid', 'cooking oil':'liquid',
+    'coconut water':'liquid', 'juice':'liquid', 'soft drink':'liquid',
+    // fresh produce — small number = kg, large round number = g
+    // (vegetables/fruits/meat categories default to 'produce' below, no need to list each item)
+    // everything else (snacks, bakery, household, personal care, eggs) defaults to 'count'
+    'eggs':'count'
+  };
+  const CATEGORY_MEASURE_DEFAULT = {
+    vegetables:'produce', fruits:'produce', meat:'produce',
+    grains:'bulk', beverages:'liquid', dairy:'packet',
+    bakery:'count', snacks:'count', household:'count', personal:'count', others:'count'
+  };
+  function detectMeasure(itemName){
+    const lname = itemName.trim().toLowerCase();
+    if (MEASURE_OVERRIDES[lname]) return MEASURE_OVERRIDES[lname];
+    const cat = findCategoryForName(itemName);
+    return CATEGORY_MEASURE_DEFAULT[cat] || 'count';
+  }
+  // parses a qty field's raw text for a given item into {qty, unit}.
+  // if the person already typed a unit (e.g. "500g", "2 kg"), that's respected as-is.
+  function autoFormatQty(itemName, rawQtyStr){
+    const trimmed = (rawQtyStr||'').trim();
+    if (!trimmed) return { qty:null, unit:'' };
+    const unitMatch = trimmed.match(/^([\d.]+)\s*([a-zA-Z]+)$/);
+    if (unitMatch) return { qty:Number(unitMatch[1]), unit:unitMatch[2] };
+    const num = Number(trimmed);
+    if (isNaN(num)) return { qty:trimmed, unit:'' }; // non-numeric free text, leave untouched
+    const measure = detectMeasure(itemName);
+    if (measure === 'bulk') return { qty:num, unit:'kg' };
+    if (measure === 'packet') return { qty:num, unit:'g' };
+    if (measure === 'liquid') return num <= 20 ? { qty:num, unit:'L' } : { qty:num, unit:'ml' };
+    if (measure === 'produce') return num <= 20 ? { qty:num, unit:'kg' } : { qty:num, unit:'g' };
+    return { qty:num, unit:'pcs' }; // count
   }
 
   function buildSuggestions(query){
@@ -1671,10 +1881,11 @@
 
   $('liClearChecked').onclick = ()=>{
     if (!shoppingList.some(i=>i.checked)) return;
-    if (!confirm('Remove all checked items from the list?')) return;
-    shoppingList = shoppingList.filter(i=>!i.checked);
-    saveList(); renderList();
-    showToast('Checked items cleared');
+    showConfirm('Remove all checked items from the list?', ()=>{
+      shoppingList = shoppingList.filter(i=>!i.checked);
+      saveList(); renderList();
+      showToast('Checked items cleared');
+    });
   };
 
   function renderList(){
@@ -1780,14 +1991,7 @@
       shoppingList = shoppingList.filter(i=>i.id!==item.id);
       saveList(); renderList();
     };
-    row.querySelector('.qty-btn').onclick = ()=>{
-      const q = prompt('Quantity (leave blank for none):', item.qty || '');
-      if (q === null) return;
-      const u = prompt('Unit (e.g. kg, pcs, L):', item.unit || '');
-      item.qty = q.trim() ? Number(q) || q.trim() : null;
-      item.unit = (u||'').trim();
-      saveList(); renderList();
-    };
+    row.querySelector('.qty-btn').onclick = ()=> showQtyEdit(item);
     row.querySelector('.log-btn').onclick = ()=>{
       openAdd();
       $('fItem').value = item.item;
@@ -1885,9 +2089,10 @@
         </div>`;
       row.querySelector('.pay-btn').onclick = ()=> markRecurringPaid(item);
       row.querySelector('.del-rec-btn').onclick = ()=>{
-        if (!confirm(`Delete "${item.name}" from your subscriptions?`)) return;
-        recurring = recurring.filter(r=>r.id!==item.id);
-        saveRecurring(); renderRecurring();
+        showConfirm(`Delete "${item.name}" from your subscriptions?`, ()=>{
+          recurring = recurring.filter(r=>r.id!==item.id);
+          saveRecurring(); renderRecurring();
+        });
       };
       list.appendChild(row);
     });
@@ -2115,6 +2320,7 @@
   buildCatGrid();
   render();
   renderList();
+  buildQlSuggestions('');
   showTab('list');
   setTimeout(checkDueReminders, 800);
 })();
