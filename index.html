@@ -33,7 +33,7 @@
     --rust:#b5533c;
     --radius:14px;
     --radius-sm:9px;
-    --font-display: Georgia, 'Iowan Old Style', 'Palatino Linotype', Palatino, serif;
+    --font-display: 'Century Gothic', 'Avenir Next', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
     --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
     --font-mono: 'SF Mono', 'Cascadia Code', 'Consolas', 'Roboto Mono', monospace;
   }
@@ -84,7 +84,7 @@
     display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;
   }
   .brand-row{ display:flex; align-items:center; gap:14px; }
-  .logo-mark{ width:46px; height:46px; flex:0 0 auto; filter:drop-shadow(0 4px 10px rgba(228,166,60,0.18)); }
+  .logo-mark{ width:46px; height:46px; flex:0 0 auto; border-radius:13px; object-fit:cover; filter:drop-shadow(0 4px 10px rgba(228,166,60,0.18)); }
   .brand{
     display:flex; flex-direction:column; gap:3px;
   }
@@ -92,9 +92,9 @@
     font-family:var(--font-mono); font-size:10px; letter-spacing:.2em; text-transform:uppercase; color:var(--gold-2); font-weight:600;
   }
   .brand h1{
-    margin:0; font-family:var(--font-display); font-weight:400; font-size:28px; letter-spacing:.005em; color:var(--text); line-height:1;
+    margin:0; font-family:var(--font-display); font-weight:700; font-size:26px; letter-spacing:-0.01em; color:var(--text); line-height:1;
   }
-  .brand h1 em{font-style:italic; color:var(--gold-2);}
+  .brand h1 em{font-style:normal; color:var(--gold-2); font-weight:700;}
 
   .total-stamp{
     text-align:right;
@@ -244,7 +244,7 @@
     padding:18px 22px 10px; color:var(--paper-text);
   }
   .receipt-head .t1{font-family:var(--font-mono); font-size:10px; letter-spacing:.16em; text-transform:uppercase; color:var(--paper-muted);}
-  .receipt-head .t2{font-family:var(--font-display); font-size:19px; margin-top:3px;}
+  .receipt-head .t2{font-family:var(--font-display); font-weight:700; font-size:19px; margin-top:3px; letter-spacing:-0.01em;}
   .date-group{padding:4px 22px;}
   .date-group .dg-head{
     display:flex; align-items:center; gap:10px; margin:14px 0 4px;
@@ -283,7 +283,7 @@
     padding:50px 24px 60px; text-align:center; color:var(--paper-muted);
   }
   .empty-receipt .em-icon{width:34px; height:34px; margin:0 auto 12px; opacity:.5;}
-  .empty-receipt .em-t{font-family:var(--font-display); font-size:17px; color:var(--paper-text);}
+  .empty-receipt .em-t{font-family:var(--font-display); font-weight:700; font-size:17px; color:var(--paper-text);}
   .empty-receipt .em-s{font-size:12.5px; margin-top:4px;}
 
   /* ---------- Sidebar ---------- */
@@ -401,7 +401,7 @@
   }
   @media(min-width:640px){ .modal{border-radius:18px;} }
   @keyframes slideUp{from{transform:translateY(24px); opacity:0;} to{transform:translateY(0); opacity:1;}}
-  .modal h2{margin:0 0 18px; font-family:var(--font-display); font-size:21px; font-weight:400; display:flex; justify-content:space-between; align-items:center;}
+  .modal h2{margin:0 0 18px; font-family:var(--font-display); font-size:20px; font-weight:700; letter-spacing:-0.01em; display:flex; justify-content:space-between; align-items:center;}
   .modal h2 button{background:none; border:none; color:var(--faint); width:28px; height:28px;}
   .modal h2 button svg{width:18px; height:18px;}
   .field{margin-bottom:14px;}
@@ -412,6 +412,40 @@
   }
   .field input:focus, .field select:focus{border-color:var(--gold);}
   .field-row{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  .field textarea{
+    width:100%; background:var(--surface); border:1px solid var(--line); color:var(--text);
+    padding:11px 12px; border-radius:9px; font-size:13.5px; outline:none; resize:vertical;
+    font-family:var(--font-mono); line-height:1.5;
+  }
+  .field textarea:focus{ border-color:var(--gold); }
+  .receipt-modal{ max-width:520px; }
+  .receipt-review-summary{
+    display:flex; justify-content:space-between; align-items:center;
+    font-size:12.5px; color:var(--muted); margin-bottom:10px; font-family:var(--font-mono);
+  }
+  .receipt-review-summary b{ color:var(--gold-2); }
+  .receipt-review-list{ max-height:48vh; overflow-y:auto; margin:0 -4px; }
+  .receipt-item-row{
+    display:flex; align-items:flex-start; gap:8px; padding:9px 4px; border-bottom:1px solid var(--line);
+  }
+  .receipt-item-row:last-child{ border-bottom:none; }
+  .receipt-item-row .ri-chk{
+    width:20px; height:20px; border-radius:6px; border:1.5px solid var(--line-strong); flex:0 0 auto; margin-top:8px;
+    display:flex; align-items:center; justify-content:center; color:transparent;
+  }
+  .receipt-item-row.included .ri-chk{ background:var(--cardamom); border-color:var(--cardamom); color:#fff; }
+  .receipt-item-row.included .ri-chk svg{ width:12px; height:12px; }
+  .receipt-item-row.excluded{ opacity:.4; }
+  .ri-fields{ flex:1; display:grid; grid-template-columns:2fr 1fr 1fr; gap:6px; min-width:0; }
+  .ri-fields input{
+    background:var(--surface-2); border:1px solid var(--line); color:var(--text);
+    padding:8px 9px; border-radius:8px; font-size:12.5px; outline:none; min-width:0;
+  }
+  .ri-fields input:focus{ border-color:var(--gold); }
+  .ri-fields input.ri-price{ text-align:right; font-family:var(--font-mono); }
+  .ri-del{ width:24px; height:24px; border:none; background:none; color:var(--faint); flex:0 0 auto; margin-top:6px; }
+  .ri-del:hover{ color:var(--rust); }
+  .ri-del svg{ width:14px; height:14px; }
   .price-hint{
     margin-top:6px; font-size:11.5px; color:var(--gold-2); display:flex; align-items:center; gap:6px; cursor:pointer;
   }
@@ -500,6 +534,12 @@
   .quick-log button:active{ transform:scale(0.92); }
   .quick-log button svg{ width:18px; height:18px; }
   .quick-log-hint{ font-size:11px; color:var(--faint); margin:8px 4px 0; line-height:1.4; }
+  .paste-receipt-btn{
+    width:100%; margin-top:10px; background:var(--surface); border:1px dashed var(--line-strong); color:var(--muted);
+    padding:11px; border-radius:12px; font-size:12.5px; display:flex; align-items:center; justify-content:center; gap:8px;
+  }
+  .paste-receipt-btn svg{ width:15px; height:15px; flex:0 0 auto; }
+  .paste-receipt-btn:hover{ border-color:var(--gold); color:var(--gold-2); }
 
   .suggest-label{font-family:var(--font-mono); font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:var(--faint); margin:2px 0 8px;}
   .suggest-row{display:flex; gap:7px; overflow-x:auto; padding-bottom:14px; scrollbar-width:none;}
@@ -583,7 +623,7 @@
 
   .empty-list{ text-align:center; padding:50px 20px 60px; color:var(--faint); }
   .empty-list svg{width:32px; height:32px; margin-bottom:12px; opacity:.5;}
-  .empty-list .em-t{font-family:var(--font-display); font-size:17px; color:var(--text);}
+  .empty-list .em-t{font-family:var(--font-display); font-weight:700; font-size:17px; color:var(--text);}
   .empty-list .em-s{font-size:12.5px; margin-top:4px;}
 
   @media(max-width:760px){
@@ -645,21 +685,10 @@
 <header class="top">
   <div class="wordmark">
     <div class="brand-row">
-      <svg class="logo-mark" viewBox="0 0 48 48" fill="none">
-        <defs>
-          <linearGradient id="logoGrad" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stop-color="#f0c169"/>
-            <stop offset="1" stop-color="#e4a63c"/>
-          </linearGradient>
-        </defs>
-        <rect x="1" y="1" width="46" height="46" rx="13" fill="#14150f"/>
-        <rect x="1" y="1" width="46" height="46" rx="13" fill="none" stroke="url(#logoGrad)" stroke-width="1.3" opacity="0.55"/>
-        <text x="22" y="34" font-family="Georgia, 'Iowan Old Style', serif" font-size="28" text-anchor="middle" fill="url(#logoGrad)">J</text>
-        <circle cx="34.5" cy="14.5" r="2.3" fill="url(#logoGrad)"/>
-      </svg>
+      <img class="logo-mark" src="./icon-192.png" alt="Jledger logo">
       <div class="brand">
         <div class="eyebrow">Daily Purchases</div>
-        <h1>J<em>ledger</em></h1>
+        <h1><em>J</em>ledger</h1>
       </div>
     </div>
     <div class="total-stamp">
@@ -739,6 +768,10 @@
     </button>
   </div>
   <div class="suggest-row" id="qlSuggestRow" style="margin-top:10px;"></div>
+  <button id="pasteReceiptBtn" class="paste-receipt-btn">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg>
+    Paste receipt text — add multiple items at once
+  </button>
 </div>
 
 <div class="stats">
@@ -948,7 +981,44 @@
   </div>
 </div>
 
+<div class="overlay" id="receiptOverlay">
+  <div class="modal receipt-modal">
+    <h2 id="receiptModalTitle">Add from receipt text
+      <button id="closeReceiptModal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+    </h2>
+
+    <div id="receiptStep1">
+      <div class="field-row">
+        <div class="field">
+          <label>Date this bill is from</label>
+          <input id="receiptDate" type="date">
+        </div>
+        <div class="field">
+          <label>Store / note (optional)</label>
+          <input id="receiptStore" type="text" placeholder="e.g. Little India Wet Market">
+        </div>
+      </div>
+      <div class="field">
+        <label>Paste the receipt text</label>
+        <textarea id="receiptText" placeholder="Paste item lines here, e.g.&#10;Tomato 2kg   80.00&#10;Milk 1L      55.00&#10;Rice 5kg     420.00" rows="7"></textarea>
+      </div>
+      <div class="quick-log-hint" style="margin:0 0 14px;">Get this text by asking any AI to read your bill photo and list out the items with prices, then paste the result here.</div>
+      <button type="button" class="submit-btn" id="receiptParseBtn">Parse items</button>
+    </div>
+
+    <div id="receiptStep2" style="display:none;">
+      <div class="receipt-review-summary" id="receiptReviewSummary"></div>
+      <div id="receiptReviewList" class="receipt-review-list"></div>
+      <div class="field-row" style="margin-top:14px;">
+        <button type="button" class="io-btn" id="receiptBackBtn">← Back to text</button>
+        <button type="button" class="submit-btn" id="receiptConfirmBtn" style="margin-top:0;">Add selected to ledger</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
+
 
 <script>
 (function(){
@@ -1425,6 +1495,171 @@
     });
   }
   $('qlItem').addEventListener('input', e=> buildQlSuggestions(e.target.value));
+
+  /* ---------------- Paste receipt: parse free text into item/qty/price lines ---------------- */
+  const RECEIPT_SKIP_PATTERNS = /^(sub\s*total|total|grand\s*total|tax|gst|cgst|sgst|igst|vat|discount|change|cash|card|credit|debit|thank you|thanks|welcome|invoice|receipt no|bill no|order no|order id|date|time|phone|tel|mobile|customer|cashier|served by|table|counter|qty\s+price|item\s+price|description|amount|balance|round\s*off|net\s*amount|www\.|http)/i;
+  const PRICE_RE = /[₹$€£]?\s?(\d{1,3}(?:,\d{3})*\.\d{1,2}|\d+\.\d{1,2})\s*$/;
+  const QTY_UNIT_RE = /(\d+(?:\.\d+)?)\s*(kg|g|gm|gms|grams?|l|ltr|litre|ml|pcs|pc|nos|units?|packs?)\b/i;
+
+  function extractQty(text){
+    const m = text.match(QTY_UNIT_RE) || text.match(/\bx\s*(\d+)\b/i);
+    if (!m) return { qty:null, unit:'', rest:text };
+    const qty = Number(m[1]);
+    let unit = (m[2]||'').toLowerCase().replace(/^gms?$|^grams?$/,'g').replace(/^ltr$|^litre$/,'l').replace(/^pc$/,'pcs').replace(/^nos$|^units?$/,'pcs').replace(/^packs?$/,'pcs');
+    return { qty, unit, rest: text.replace(m[0], '').trim() };
+  }
+  function cleanName(rest){
+    rest = rest.replace(/^\d{1,3}[\.\)]\s*/, ''); // strip leading serial number "1." "12)"
+    rest = rest.replace(/^\d{4,}\s+/, ''); // strip leading product/SKU code
+    rest = rest.replace(/[-–—.:@]+$/,'').replace(/\s{2,}/g,' ').trim();
+    return rest;
+  }
+  // a "qty/price-only" line — e.g. "2 PCS@ 1.000 2.00" — has almost nothing left once
+  // numbers/units/@ are stripped, meaning it's a continuation line, not a real item name
+  function isQtyPriceOnlyLine(line){
+    const priceMatch = line.match(PRICE_RE);
+    if (!priceMatch) return false;
+    let rest = line.slice(0, priceMatch.index).trim();
+    rest = rest.replace(/(\d+(?:\.\d+)?)\s*(pcs?|kg|g|gm|gms|l|ltr|ml|nos|units?)?\s*@?/gi, '').replace(/[\d.\s]/g,'').trim();
+    return rest.length <= 1;
+  }
+
+  function parseReceiptText(text){
+    const lines = text.split('\n').map(l=>l.trim()).filter(Boolean);
+    const results = [];
+    for (let i = 0; i < lines.length; i++){
+      const line = lines[i];
+      if (RECEIPT_SKIP_PATTERNS.test(line)) continue;
+      // guard against stray reference/transaction numbers (e.g. "CA-13482") being read as items
+      if (/^[a-z]{1,4}[-\s]?\d{3,}$/i.test(line)) continue;
+
+      const priceMatch = line.match(PRICE_RE);
+
+      if (priceMatch && !isQtyPriceOnlyLine(line)){
+        // normal single-line case: "Item name ... price"
+        const priceStr = priceMatch[1].replace(/,/g,'');
+        const price = Number(priceStr);
+        if (isNaN(price) || price <= 0) continue;
+        let rest = line.slice(0, priceMatch.index).trim();
+        if (!rest) continue;
+        rest = cleanName(rest);
+        const { qty, unit, rest: rest2 } = extractQty(rest);
+        const name = cleanName(rest2);
+        if (!name || name.length < 2 || /^\d+$/.test(name) || RECEIPT_SKIP_PATTERNS.test(name)) continue;
+        const titled = name.replace(/\w\S*/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
+        results.push({ name: titled, qty, unit, price, category: findCategoryForName(titled) });
+        continue;
+      }
+
+      // two-line case: this line has no usable price (or is a qty/price-only continuation
+      // for a PREVIOUS unmatched name) — check if it's a name-only line followed by a
+      // qty/price-only line, common on itemized supermarket receipts
+      const hasLetters = /[a-z]{2,}/i.test(line);
+      const nextLine = lines[i+1];
+      if (hasLetters && !priceMatch && nextLine && isQtyPriceOnlyLine(nextLine) && !RECEIPT_SKIP_PATTERNS.test(nextLine)){
+        const name = cleanName(line);
+        if (name && name.length >= 2){
+          const nextPriceMatch = nextLine.match(PRICE_RE);
+          const price = Number(nextPriceMatch[1].replace(/,/g,''));
+          if (!isNaN(price) && price > 0){
+            const { qty, unit } = extractQty(nextLine.slice(0, nextPriceMatch.index));
+            const titled = name.replace(/\w\S*/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
+            results.push({ name: titled, qty, unit, price, category: findCategoryForName(titled) });
+            i++; // consume the continuation line too
+          }
+        }
+      }
+    }
+    return results;
+  }
+
+  let receiptParsedItems = [];
+
+  function openReceiptModal(){
+    $('receiptDate').value = dateKey(new Date());
+    $('receiptStore').value = '';
+    $('receiptText').value = '';
+    $('receiptStep1').style.display = '';
+    $('receiptStep2').style.display = 'none';
+    $('receiptModalTitle').firstChild.textContent = 'Add from receipt text';
+    $('receiptOverlay').classList.add('show');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeReceiptModal(){
+    $('receiptOverlay').classList.remove('show');
+    document.body.style.overflow = '';
+  }
+  $('pasteReceiptBtn').onclick = openReceiptModal;
+  $('closeReceiptModal').onclick = closeReceiptModal;
+  $('receiptOverlay').addEventListener('click', e=>{ if (e.target.id==='receiptOverlay') closeReceiptModal(); });
+
+  function renderReceiptReview(){
+    const list = $('receiptReviewList');
+    list.innerHTML = '';
+    receiptParsedItems.forEach((item, idx)=>{
+      const row = document.createElement('div');
+      row.className = 'receipt-item-row' + (item.included ? ' included' : ' excluded');
+      row.innerHTML = `
+        <button type="button" class="ri-chk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></button>
+        <div class="ri-fields">
+          <input class="ri-name" type="text" value="${escapeHtml(item.name)}">
+          <input class="ri-qty" type="text" value="${item.qty ? escapeHtml(String(item.qty)+(item.unit?' '+item.unit:'')) : ''}" placeholder="Qty">
+          <input class="ri-price" type="number" step="0.01" value="${item.price}">
+        </div>
+        <button type="button" class="ri-del"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2m2 0l-1 14a1 1 0 01-1 1H7a1 1 0 01-1-1L5 6"/></svg></button>`;
+      row.querySelector('.ri-chk').onclick = ()=>{ item.included = !item.included; renderReceiptReview(); };
+      row.querySelector('.ri-name').addEventListener('input', e=> item.name = e.target.value);
+      row.querySelector('.ri-qty').addEventListener('input', e=> item.qtyRaw = e.target.value);
+      row.querySelector('.ri-price').addEventListener('input', e=> item.price = Number(e.target.value)||0);
+      row.querySelector('.ri-del').onclick = ()=>{ receiptParsedItems.splice(idx,1); renderReceiptReview(); };
+      list.appendChild(row);
+    });
+    const includedCount = receiptParsedItems.filter(i=>i.included).length;
+    const includedTotal = receiptParsedItems.filter(i=>i.included).reduce((s,i)=>s+Number(i.price||0),0);
+    $('receiptReviewSummary').innerHTML = `<span>${includedCount} of ${receiptParsedItems.length} selected</span><span>Total: <b>${fmt(includedTotal)}</b></span>`;
+  }
+
+  $('receiptParseBtn').onclick = ()=>{
+    const text = $('receiptText').value;
+    if (!text.trim()){ showToast('Paste some receipt text first'); return; }
+    const parsed = parseReceiptText(text);
+    if (!parsed.length){ showToast('Could not find any item lines — try editing the text'); return; }
+    receiptParsedItems = parsed.map(p => ({...p, included:true, qtyRaw: p.qty ? `${p.qty}${p.unit?(' '+p.unit):''}` : ''}));
+    $('receiptModalTitle').firstChild.textContent = 'Review parsed items';
+    $('receiptStep1').style.display = 'none';
+    $('receiptStep2').style.display = '';
+    renderReceiptReview();
+  };
+  $('receiptBackBtn').onclick = ()=>{
+    $('receiptModalTitle').firstChild.textContent = 'Add from receipt text';
+    $('receiptStep1').style.display = '';
+    $('receiptStep2').style.display = 'none';
+  };
+  $('receiptConfirmBtn').onclick = ()=>{
+    const toAdd = receiptParsedItems.filter(i=>i.included && i.name.trim() && i.price > 0);
+    if (!toAdd.length){ showToast('No items selected'); return; }
+    const date = $('receiptDate').value || dateKey(new Date());
+    const store = $('receiptStore').value.trim();
+    toAdd.forEach((item, i)=>{
+      const { qty, unit } = autoFormatQty(item.name, item.qtyRaw || '');
+      purchases.push({
+        id: Date.now() + i,
+        item: item.name.trim(),
+        category: findCategoryForName(item.name),
+        qty: qty,
+        unit: unit,
+        price: item.price,
+        date: date,
+        store: store,
+        currency: currency
+      });
+    });
+    activeCategory = 'all'; searchTerm = ''; $('searchInput').value = '';
+    viewDate = new Date(date + 'T00:00:00');
+    save(); render();
+    closeReceiptModal();
+    showToast(`${toAdd.length} item${toAdd.length===1?'':'s'} added to ledger`);
+  };
 
   /* ---------------- Month nav ---------------- */
   $('prevMonth').onclick = ()=>{ viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth()-1, 1); render(); };
