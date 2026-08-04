@@ -132,6 +132,13 @@
   }
   .currency-pill:hover{border-color:var(--gold);}
 
+  .field-label-row{ display:flex; align-items:center; justify-content:space-between; }
+  .currency-pill-mini{
+    background:var(--surface-2); border:1px solid var(--line); color:var(--gold-2);
+    border-radius:6px; padding:2px 9px; font-size:10.5px; font-family:var(--font-mono); font-weight:700; letter-spacing:.02em;
+  }
+  .currency-pill-mini:hover{ border-color:var(--gold); }
+
   .currency-list{ max-height:52vh; overflow-y:auto; margin:0 -6px; }
   .currency-item{
     display:flex; align-items:center; gap:12px; padding:11px 6px; border-radius:9px; width:100%;
@@ -319,6 +326,11 @@
   .rec-info{ flex:1; min-width:0; }
   .rec-name{ font-size:13.5px; font-weight:600; color:var(--text); }
   .rec-meta{ font-family:var(--font-mono); font-size:11px; color:var(--muted); margin-top:2px; }
+  .rec-currency-pill{
+    background:var(--surface-2); border:1px solid var(--line); color:var(--text);
+    padding:4px 9px; border-radius:8px; font-size:11.5px; font-family:var(--font-mono); font-weight:700; flex:0 0 auto; white-space:nowrap;
+  }
+  .rec-currency-pill:hover{ border-color:var(--gold); }
   .due-badge{
     font-family:var(--font-mono); font-size:10px; font-weight:700; padding:3px 9px; border-radius:12px;
     white-space:nowrap; flex:0 0 auto;
@@ -924,7 +936,7 @@
       </div>
       <div class="field-row">
         <div class="field">
-          <label>Amount</label>
+          <label class="field-label-row">Amount <button type="button" id="fCurrencyBtn" class="currency-pill-mini"></button></label>
           <input id="fPrice" type="number" min="0" step="0.01" placeholder="0.00" inputmode="decimal" required>
           <div id="priceHint" class="price-hint" style="display:none"></div>
         </div>
@@ -1319,6 +1331,10 @@
     });
   }
 
+  let formCurrency = null;
+  function updateFormCurrencyBtn(){
+    $('fCurrencyBtn').textContent = formCurrency;
+  }
   function openEdit(id){
     const p = purchases.find(x=>x.id===id);
     if (!p) return;
@@ -1332,6 +1348,8 @@
     $('fDate').value = p.date;
     $('fStore').value = p.store || '';
     selectedFormCat = p.category;
+    formCurrency = p.currency || currency;
+    updateFormCurrencyBtn();
     buildCatGrid();
     openModal();
   }
@@ -1344,9 +1362,15 @@
     delete $('purchaseForm').dataset.sourceListId;
     $('fDate').value = dateKey(new Date());
     selectedFormCat = 'vegetables';
+    formCurrency = currency;
+    updateFormCurrencyBtn();
     buildCatGrid();
     openModal();
   }
+  $('fCurrencyBtn').onclick = ()=> openCurrencyModal({
+    current: formCurrency,
+    onSelect: sym=>{ formCurrency = sym; updateFormCurrencyBtn(); }
+  });
 
   function openModal(){ $('overlay').classList.add('show'); document.body.style.overflow='hidden'; updatePriceHint(); }
   function closeModalFn(){ $('overlay').classList.remove('show'); document.body.style.overflow=''; }
@@ -1393,7 +1417,8 @@
         unit: unit,
         price: Number($('fPrice').value),
         date: $('fDate').value,
-        store: $('fStore').value.trim()
+        store: $('fStore').value.trim(),
+        currency: formCurrency || currency
       };
       if (!data.item || !data.date || isNaN(data.price)) return;
       if (id){
@@ -1402,7 +1427,6 @@
         showToast('Purchase updated');
       } else {
         data.id = Date.now();
-        data.currency = currency; // remembers which currency was active when this purchase was logged
         purchases.push(data);
         showToast('Added to ledger');
       }
@@ -1775,7 +1799,7 @@
       return;
     }
     results.forEach(c=>{
-      const isActive = c.symbol === currency;
+      const isActive = c.symbol === currencyPickerActiveSymbol;
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'currency-item' + (isActive ? ' active' : '');
@@ -1787,15 +1811,24 @@
         </span>
         ${isActive ? '<svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>' : ''}`;
       btn.onclick = ()=>{
-        currency = c.symbol;
-        save(); render(); updateCurrencyButtons();
+        currencyPickerCallback(c.symbol);
         closeCurrencyModal();
       };
       list.appendChild(btn);
     });
   }
 
-  function openCurrencyModal(){
+  let currencyPickerCallback = null;
+  let currencyPickerActiveSymbol = null;
+  // opts: { current: symbol to show as selected, onSelect: fn(symbol) }
+  // if omitted, defaults to changing the app-wide currency (header/budget behavior)
+  function openCurrencyModal(opts){
+    opts = opts || {};
+    currencyPickerActiveSymbol = opts.current !== undefined ? opts.current : currency;
+    currencyPickerCallback = opts.onSelect || (sym=>{
+      currency = sym;
+      save(); render(); updateCurrencyButtons();
+    });
     $('currencySearch').value = '';
     buildCurrencyList('');
     $('currencyOverlay').classList.add('show');
@@ -1805,8 +1838,8 @@
     $('currencyOverlay').classList.remove('show');
     document.body.style.overflow = '';
   }
-  $('currencyBtnHeader').onclick = openCurrencyModal;
-  $('currencyBtnBudget').onclick = openCurrencyModal;
+  $('currencyBtnHeader').onclick = ()=> openCurrencyModal();
+  $('currencyBtnBudget').onclick = ()=> openCurrencyModal();
   $('closeCurrencyModal').onclick = closeCurrencyModal;
   $('currencyOverlay').addEventListener('click', e=>{ if (e.target.id==='currencyOverlay') closeCurrencyModal(); });
   $('currencySearch').addEventListener('input', e=> buildCurrencyList(e.target.value));
@@ -2347,14 +2380,19 @@
       row.innerHTML = `
         <div class="rec-info">
           <div class="rec-name">${escapeHtml(item.name)}</div>
-          <div class="rec-meta">${fmt(item.amount)} · every month on day ${item.day}</div>
+          <div class="rec-meta">every month on day ${item.day}</div>
         </div>
+        <button type="button" class="rec-currency-pill">${escapeHtml(fmtWith(item.currency || currency, item.amount))}</button>
         <span class="due-badge ${badgeClass}">${badgeText}</span>
         <div class="rec-actions">
           <button class="pay-btn" title="Mark paid & log to ledger"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></button>
           <button class="del-rec-btn" title="Delete subscription"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2m2 0l-1 14a1 1 0 01-1 1H7a1 1 0 01-1-1L5 6"/></svg></button>
         </div>`;
       row.querySelector('.pay-btn').onclick = ()=> markRecurringPaid(item);
+      row.querySelector('.rec-currency-pill').onclick = ()=> openCurrencyModal({
+        current: item.currency || currency,
+        onSelect: sym=>{ item.currency = sym; saveRecurring(); renderRecurring(); }
+      });
       row.querySelector('.del-rec-btn').onclick = ()=>{
         showConfirm(`Delete "${item.name}" from your subscriptions?`, ()=>{
           recurring = recurring.filter(r=>r.id!==item.id);
@@ -2375,7 +2413,7 @@
       price: Number(item.amount),
       date: dateKey(new Date()),
       store: 'Subscription',
-      currency: currency
+      currency: item.currency || currency
     });
     item.lastPaidMonth = monthKey(new Date());
     activeCategory = 'all';
@@ -2392,7 +2430,7 @@
     const amount = Number($('recAmount').value);
     const day = Number(recDaySelect.value);
     if (!name || !amount) return;
-    recurring.push({ id: Date.now(), name, amount, day, lastPaidMonth: null });
+    recurring.push({ id: Date.now(), name, amount, day, currency: currency, lastPaidMonth: null });
     saveRecurring(); renderRecurring();
     $('recName').value = ''; $('recAmount').value = '';
     showToast('Subscription added');
