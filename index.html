@@ -1456,8 +1456,14 @@
   function guardedTap(btn, fn){
     if (btn.dataset.busy === '1') return;
     btn.dataset.busy = '1';
-    fn();
-    setTimeout(()=>{ btn.dataset.busy = '0'; }, 600);
+    try{
+      fn();
+    } catch(err){
+      console.error('Action failed:', err);
+      showToast('Something went wrong — please try again');
+    } finally {
+      setTimeout(()=>{ btn.dataset.busy = '0'; }, 600);
+    }
   }
 
   function quickLogSubmit(){
