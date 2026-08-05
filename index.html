@@ -1379,18 +1379,21 @@
     const hint = $('priceHint');
     const name = $('fItem').value.trim().toLowerCase();
     if (!name){ hint.style.display='none'; return; }
+    const editingId = $('editId').value;
     const matches = purchases
-      .filter(p => p.item.trim().toLowerCase() === name)
+      .filter(p => p.item.trim().toLowerCase() === name && String(p.id) !== String(editingId))
       .sort((a,b)=> b.date.localeCompare(a.date));
     if (!matches.length){ hint.style.display='none'; return; }
     const last = matches[0];
     const d = new Date(last.date+'T00:00:00');
     hint.style.display = 'flex';
-    hint.innerHTML = `↺ Last paid <b>${fmt(last.price)}</b> on ${pad(d.getDate())} ${MONTHS[d.getMonth()].slice(0,3)}${last.qty?` (${last.qty}${last.unit?(' '+last.unit):''})`:''} — tap to use`;
+    hint.innerHTML = `↺ Last paid <b>${fmtWith(last.currency || currency, last.price)}</b> on ${pad(d.getDate())} ${MONTHS[d.getMonth()].slice(0,3)}${last.qty?` (${last.qty}${last.unit?(' '+last.unit):''})`:''} — tap to use`;
     hint.onclick = ()=>{
       $('fPrice').value = last.price;
       if (last.qty) $('fQty').value = last.qty;
       if (last.unit) $('fUnit').value = last.unit;
+      formCurrency = last.currency || currency;
+      updateFormCurrencyBtn();
     };
   }
   $('fItem').addEventListener('input', updatePriceHint);
