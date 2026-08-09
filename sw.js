@@ -1,5 +1,5 @@
 // Jledger service worker — caches the app shell so it opens instantly, even with no signal.
-const CACHE = 'jledger-shell-v6';
+const CACHE = 'jledger-shell-v7';
 const SHELL_FILES = [
   './',
   './index.html',
