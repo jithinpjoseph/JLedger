@@ -387,6 +387,40 @@
   .danger-btn.strong{ background:rgba(181,83,60,0.12); }
   .danger-note{ font-size:10.5px; color:var(--faint); margin-top:9px; font-family:var(--font-mono); }
 
+  .scope-toggle{ display:flex; gap:8px; }
+  .scope-btn{
+    flex:1; background:var(--surface-2); border:1px solid var(--line); color:var(--muted);
+    padding:9px; border-radius:9px; font-size:12.5px; font-weight:600;
+  }
+  .scope-btn.active{ background:linear-gradient(155deg, var(--gold-2), var(--gold)); border-color:var(--gold); color:#1a1a12; }
+  .date-range-row{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px; }
+  .date-range-row .field label{ font-size:10px; letter-spacing:.08em; text-transform:uppercase; color:var(--faint); margin-bottom:5px; display:block; font-family:var(--font-mono); }
+  .date-range-row .field input{
+    width:100%; background:var(--surface-2); border:1px solid var(--line); color:var(--text);
+    padding:9px 10px; border-radius:9px; font-size:13px; outline:none;
+  }
+  .date-range-row .field input:focus{ border-color:var(--gold); }
+
+  #printBillArea{ display:none; }
+  @media print{
+    body *{ visibility:hidden; }
+    #printBillArea, #printBillArea *{ visibility:visible; }
+    #printBillArea{
+      display:block; position:absolute; top:0; left:0; width:100%; padding:24px;
+      font-family:Georgia, serif; color:#111;
+    }
+    .pb-header{ text-align:center; margin-bottom:18px; border-bottom:2px solid #111; padding-bottom:12px; }
+    .pb-header h1{ margin:0; font-size:22px; letter-spacing:.02em; }
+    .pb-header .pb-sub{ font-size:12px; color:#555; margin-top:4px; }
+    .pb-day{ margin-top:16px; }
+    .pb-day-head{ display:flex; justify-content:space-between; font-weight:700; font-size:13px; border-bottom:1px solid #999; padding-bottom:4px; margin-bottom:6px; }
+    .pb-row{ display:flex; justify-content:space-between; font-size:12.5px; padding:3px 0; }
+    .pb-row .pb-name{ flex:1; }
+    .pb-row .pb-meta{ color:#666; font-size:10.5px; }
+    .pb-grand{ margin-top:20px; border-top:2px solid #111; padding-top:10px; display:flex; justify-content:space-between; font-size:15px; font-weight:700; }
+    .pb-footer{ margin-top:24px; font-size:10px; color:#888; text-align:center; }
+  }
+
   /* ---------- FAB ---------- */
   .fab{
     position:fixed; right:22px; bottom:24px; width:58px; height:58px; border-radius:50%;
@@ -835,6 +869,35 @@
     </div>
 
     <div class="side-card">
+      <h3>Export bill</h3>
+      <div class="scope-toggle">
+        <button type="button" class="scope-btn active" id="exportScopeDay">Today</button>
+        <button type="button" class="scope-btn" id="exportScopeMonth">This month</button>
+        <button type="button" class="scope-btn" id="exportScopeCustom">Pick dates</button>
+      </div>
+      <div class="date-range-row" id="dateRangeRow" style="display:none;">
+        <div class="field">
+          <label>From</label>
+          <input type="date" id="exportFromDate">
+        </div>
+        <div class="field">
+          <label>To</label>
+          <input type="date" id="exportToDate">
+        </div>
+      </div>
+      <div class="io-row" style="margin-top:10px;">
+        <button class="io-btn" id="billShareBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 10.6l6.8-3.8M8.6 13.4l6.8 3.8"/></svg>
+          Share text
+        </button>
+        <button class="io-btn" id="billPrintBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V3h12v6"/><path d="M6 18H4a1 1 0 01-1-1v-6a1 1 0 011-1h16a1 1 0 011 1v6a1 1 0 01-1 1h-2"/><rect x="6" y="14" width="12" height="7"/></svg>
+          Save as PDF
+        </button>
+      </div>
+    </div>
+
+    <div class="side-card">
       <h3>Backup</h3>
       <div class="io-row">
         <button class="io-btn" id="exportBtn">
@@ -866,6 +929,8 @@
   </div>
 </div>
 </div><!-- /ledgerView -->
+
+<div id="printBillArea"></div>
 
 <!-- ===================== INSIGHTS VIEW ===================== -->
 <div id="insightsView" style="display:none">
@@ -1283,10 +1348,9 @@
     Object.keys(groups).sort((a,b)=>b.localeCompare(a)).forEach(dstr=>{
       const items = groups[dstr];
       const d = new Date(dstr+'T00:00:00');
-      const dayTotal = items.reduce((s,p)=>s+Number(p.price||0),0);
       const head = document.createElement('div');
       head.className = 'dg-head';
-      head.innerHTML = `<span>${DOW[d.getDay()]}, ${pad(d.getDate())} ${MONTHS[d.getMonth()].slice(0,3).toUpperCase()}</span><span class="line"></span><span class="dg-total">${fmt(dayTotal)}</span>`;
+      head.innerHTML = `<span>${DOW[d.getDay()]}, ${pad(d.getDate())} ${MONTHS[d.getMonth()].slice(0,3).toUpperCase()}</span><span class="line"></span><span class="dg-total">${sumByCurrency(items)}</span>`;
       const wrap = document.createElement('div');
       wrap.className = 'date-group';
       wrap.appendChild(head);
@@ -1304,7 +1368,7 @@
             ${metaParts.length ? `<div class="meta">${escapeHtml(metaParts.join(' · '))}</div>` : ''}
           </div>
           <div class="leader"></div>
-          <div class="price">${fmt(p.price)}</div>
+          <div class="price">${fmtWith(p.currency || currency, p.price)}</div>
           <div class="row-actions">
             <button class="edit-btn" data-id="${p.id}" aria-label="Edit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></button>
             <button class="del-btn" data-id="${p.id}" aria-label="Delete"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2m2 0l-1 14a1 1 0 01-1 1H7a1 1 0 01-1-1L5 6"/></svg></button>
@@ -1909,6 +1973,114 @@
         showToast('All purchase data deleted');
       });
     });
+  };
+
+  /* ---------------- Export bill: share as text or print/save as PDF, for today or the viewed month ---------------- */
+  let exportScope = 'day';
+  function setExportScope(scope){
+    exportScope = scope;
+    $('exportScopeDay').classList.toggle('active', scope==='day');
+    $('exportScopeMonth').classList.toggle('active', scope==='month');
+    $('exportScopeCustom').classList.toggle('active', scope==='custom');
+    $('dateRangeRow').style.display = scope==='custom' ? '' : 'none';
+  }
+  $('exportScopeDay').onclick = ()=> setExportScope('day');
+  $('exportScopeMonth').onclick = ()=> setExportScope('month');
+  $('exportScopeCustom').onclick = ()=>{
+    if (!$('exportFromDate').value) $('exportFromDate').value = dateKey(new Date());
+    if (!$('exportToDate').value) $('exportToDate').value = dateKey(new Date());
+    setExportScope('custom');
+  };
+
+  function getExportPurchases(){
+    if (exportScope === 'day'){
+      const key = dateKey(new Date());
+      return { items: purchases.filter(p=>p.date===key), label: `${MONTHS[new Date().getMonth()]} ${new Date().getDate()}, ${new Date().getFullYear()}` };
+    }
+    if (exportScope === 'custom'){
+      const from = $('exportFromDate').value;
+      const to = $('exportToDate').value;
+      if (!from || !to) return { items: [], label: '' };
+      const [fromKey, toKey] = from <= to ? [from, to] : [to, from];
+      const items = purchases.filter(p => p.date >= fromKey && p.date <= toKey);
+      const fmtLabel = (k)=>{ const d = new Date(k+'T00:00:00'); return `${pad(d.getDate())} ${MONTHS[d.getMonth()].slice(0,3)} ${d.getFullYear()}`; };
+      const label = fromKey === toKey ? fmtLabel(fromKey) : `${fmtLabel(fromKey)} – ${fmtLabel(toKey)}`;
+      return { items, label };
+    }
+    return { items: monthPurchases(), label: `${MONTHS[viewDate.getMonth()]} ${viewDate.getFullYear()}` };
+  }
+
+  function buildBillShareText(){
+    const { items, label } = getExportPurchases();
+    if (!items.length) return null;
+    const sorted = [...items].sort((a,b)=> a.date.localeCompare(b.date));
+    const groups = {};
+    sorted.forEach(p=>{ (groups[p.date] = groups[p.date] || []).push(p); });
+    const multiDay = Object.keys(groups).length > 1;
+    const lines = [`🧾 *Jledger — ${label}*`, ''];
+    Object.keys(groups).sort().forEach(dstr=>{
+      const d = new Date(dstr+'T00:00:00');
+      if (multiDay) lines.push(`*${DOW[d.getDay()]}, ${pad(d.getDate())} ${MONTHS[d.getMonth()].slice(0,3)}*`);
+      groups[dstr].forEach(p=>{
+        const meta = p.qty ? ` (${p.qty}${p.unit?(' '+p.unit):''})` : '';
+        lines.push(`${p.item}${meta} — ${fmtWith(p.currency||currency, p.price)}`);
+      });
+      lines.push('');
+    });
+    lines.push(`*Total: ${sumByCurrency(items)}*`);
+    return lines.join('\n').trim();
+  }
+
+  $('billShareBtn').onclick = async ()=>{
+    if (exportScope === 'custom' && (!$('exportFromDate').value || !$('exportToDate').value)){
+      showToast('Pick both a from and to date'); return;
+    }
+    const text = buildBillShareText();
+    if (!text){ showToast('No purchases logged in that range'); return; }
+    if (navigator.share){
+      try{ await navigator.share({ title:'Jledger Bill', text }); return; }
+      catch(err){ /* cancelled — fall through */ }
+    }
+    try{
+      await navigator.clipboard.writeText(text);
+      showToast('Bill copied — paste it anywhere');
+    }catch(err){
+      window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
+    }
+  };
+
+  $('billPrintBtn').onclick = ()=>{
+    const { items, label } = getExportPurchases();
+    if (!label){ showToast('Pick both a from and to date'); return; }
+    if (!items.length){ showToast('No purchases logged in that range'); return; }
+    const sorted = [...items].sort((a,b)=> a.date.localeCompare(b.date));
+    const groups = {};
+    sorted.forEach(p=>{ (groups[p.date] = groups[p.date] || []).push(p); });
+    const multiDay = Object.keys(groups).length > 1;
+
+    let html = `
+      <div class="pb-header">
+        <h1>Jledger</h1>
+        <div class="pb-sub">${escapeHtml(label)} — generated ${new Date().toLocaleDateString()}</div>
+      </div>`;
+    Object.keys(groups).sort().forEach(dstr=>{
+      const d = new Date(dstr+'T00:00:00');
+      const dayItems = groups[dstr];
+      html += `<div class="pb-day">`;
+      if (multiDay){
+        html += `<div class="pb-day-head"><span>${DOW[d.getDay()]}, ${pad(d.getDate())} ${MONTHS[d.getMonth()].slice(0,3)} ${d.getFullYear()}</span><span>${sumByCurrency(dayItems)}</span></div>`;
+      }
+      dayItems.forEach(p=>{
+        const meta = [p.qty ? `${p.qty}${p.unit?(' '+p.unit):''}` : '', p.store || ''].filter(Boolean).join(' · ');
+        html += `<div class="pb-row"><span class="pb-name">${escapeHtml(p.item)}${meta ? ` <span class="pb-meta">(${escapeHtml(meta)})</span>` : ''}</span><span>${fmtWith(p.currency||currency, p.price)}</span></div>`;
+      });
+      html += `</div>`;
+    });
+    html += `<div class="pb-grand"><span>Total</span><span>${sumByCurrency(items)}</span></div>`;
+    html += `<div class="pb-footer">Generated by Jledger — jithinpjoseph.github.io/Jledger</div>`;
+
+    $('printBillArea').innerHTML = html;
+    setTimeout(()=> window.print(), 100);
   };
 
   /* ---------------- Toast ---------------- */
