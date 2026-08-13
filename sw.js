@@ -1,5 +1,5 @@
 // Jledger service worker — caches the app shell so it opens instantly, even with no signal.
-const CACHE = 'jledger-shell-v13';
+const CACHE = 'jledger-shell-v20';
 const SHELL_FILES = [
   './',
   './index.html',
@@ -30,7 +30,9 @@ self.addEventListener('fetch', (e) => {
       const cached = await cache.match(e.request);
       const network = fetch(e.request)
         .then((res) => {
-          if (res && res.ok) cache.put(e.request, res.clone());
+          // opaque = cross-origin response (e.g. a CDN script) fetched in no-cors mode;
+          // still cacheable even though res.ok reads false for these.
+          if (res && (res.ok || res.type === 'opaque')) cache.put(e.request, res.clone());
           return res;
         })
         .catch(() => cached);
