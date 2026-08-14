@@ -1800,8 +1800,20 @@
 
   /* ---------------- Paste receipt: parse free text into item/qty/price lines ---------------- */
   const RECEIPT_SKIP_PATTERNS = /^(sub\s*total|total|grand\s*total|tax|gst|cgst|sgst|igst|vat|discount|change|cash|card|credit|debit|thank you|thanks|welcome|invoice|receipt no|bill no|order no|order id|date|time|phone|tel|mobile|customer|cashier|served by|table|counter|qty\s+price|item\s+price|description|amount|balance|round\s*off|net\s*amount|www\.|http)/i;
-  const PRICE_RE = /[₹$€£]?\s?(\d{1,3}(?:,\d{3})*\.\d{1,2}|\d+\.\d{1,2})\s*$/;
+  const DECIMAL_NUM_RE = /\d{1,3}(?:,\d{3})*\.\d{1,2}/g;
   const QTY_UNIT_RE = /(\d+(?:\.\d+)?)\s*(kg|g|gm|gms|grams?|l|ltr|litre|ml|pcs|pc|nos|units?|packs?)\b/i;
+
+  // finds the LAST decimal-formatted amount anywhere in the line (not just at the very end),
+  // so trailing OCR noise after the real price — e.g. "2.00 98" from a misread table border —
+  // doesn't cause the price to go undetected entirely
+  function findLastPrice(line){
+    const matches = [...line.matchAll(DECIMAL_NUM_RE)];
+    if (!matches.length) return null;
+    const last = matches[matches.length-1];
+    const value = Number(last[0].replace(/,/g,''));
+    if (isNaN(value) || value <= 0) return null;
+    return { value, index: last.index };
+  }
 
   function extractQty(text){
     const m = text.match(QTY_UNIT_RE) || text.match(/\bx\s*(\d+)\b/i);
@@ -1819,9 +1831,9 @@
   // a "qty/price-only" line — e.g. "2 PCS@ 1.000 2.00" — has almost nothing left once
   // numbers/units/@ are stripped, meaning it's a continuation line, not a real item name
   function isQtyPriceOnlyLine(line){
-    const priceMatch = line.match(PRICE_RE);
-    if (!priceMatch) return false;
-    let rest = line.slice(0, priceMatch.index).trim();
+    const priceInfo = findLastPrice(line);
+    if (!priceInfo) return false;
+    let rest = line.slice(0, priceInfo.index).trim();
     rest = rest.replace(/(\d+(?:\.\d+)?)\s*(pcs?|kg|g|gm|gms|l|ltr|ml|nos|units?)?\s*@?/gi, '').replace(/[\d.\s]/g,'').trim();
     return rest.length <= 1;
   }
@@ -1835,21 +1847,18 @@
       // guard against stray reference/transaction numbers (e.g. "CA-13482") being read as items
       if (/^[a-z]{1,4}[-\s]?\d{3,}$/i.test(line)) continue;
 
-      const priceMatch = line.match(PRICE_RE);
+      const priceInfo = findLastPrice(line);
 
-      if (priceMatch && !isQtyPriceOnlyLine(line)){
-        // normal single-line case: "Item name ... price"
-        const priceStr = priceMatch[1].replace(/,/g,'');
-        const price = Number(priceStr);
-        if (isNaN(price) || price <= 0) continue;
-        let rest = line.slice(0, priceMatch.index).trim();
+      if (priceInfo && !isQtyPriceOnlyLine(line)){
+        // normal single-line case: "Item name ... price" (trailing junk after price, if any, is ignored)
+        let rest = line.slice(0, priceInfo.index).trim();
         if (!rest) continue;
         rest = cleanName(rest);
         const { qty, unit, rest: rest2 } = extractQty(rest);
         const name = cleanName(rest2);
         if (!name || name.length < 2 || /^\d+$/.test(name) || RECEIPT_SKIP_PATTERNS.test(name)) continue;
         const titled = name.replace(/\w\S*/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
-        results.push({ name: titled, qty, unit, price, category: findCategoryForName(titled) });
+        results.push({ name: titled, qty, unit, price: priceInfo.value, category: findCategoryForName(titled) });
         continue;
       }
 
@@ -1858,15 +1867,14 @@
       // qty/price-only line, common on itemized supermarket receipts
       const hasLetters = /[a-z]{2,}/i.test(line);
       const nextLine = lines[i+1];
-      if (hasLetters && !priceMatch && nextLine && isQtyPriceOnlyLine(nextLine) && !RECEIPT_SKIP_PATTERNS.test(nextLine)){
+      if (hasLetters && !priceInfo && nextLine && isQtyPriceOnlyLine(nextLine) && !RECEIPT_SKIP_PATTERNS.test(nextLine)){
         const name = cleanName(line);
         if (name && name.length >= 2){
-          const nextPriceMatch = nextLine.match(PRICE_RE);
-          const price = Number(nextPriceMatch[1].replace(/,/g,''));
-          if (!isNaN(price) && price > 0){
-            const { qty, unit } = extractQty(nextLine.slice(0, nextPriceMatch.index));
+          const nextPriceInfo = findLastPrice(nextLine);
+          if (nextPriceInfo){
+            const { qty, unit } = extractQty(nextLine.slice(0, nextPriceInfo.index));
             const titled = name.replace(/\w\S*/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
-            results.push({ name: titled, qty, unit, price, category: findCategoryForName(titled) });
+            results.push({ name: titled, qty, unit, price: nextPriceInfo.value, category: findCategoryForName(titled) });
             i++; // consume the continuation line too
           }
         }
