@@ -480,6 +480,11 @@
   }
 
   /* ---------- FAB ---------- */
+  .app-version{
+    text-align:center; font-family:var(--font-mono); font-size:10px; color:var(--faint);
+    padding:18px 20px 100px; letter-spacing:.05em; opacity:.6;
+  }
+
   .fab{
     position:fixed; right:22px; bottom:24px; width:58px; height:58px; border-radius:50%;
     background:linear-gradient(155deg, var(--gold-2), var(--gold));
@@ -1083,6 +1088,8 @@
     </div>
   </div>
 </div>
+
+<div class="app-version" id="appVersion">Jledger</div>
 
 <button class="fab" id="fabAdd" aria-label="Add purchase">
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
@@ -3274,6 +3281,9 @@
   $('helpBtn').onclick = openOnboarding;
 
   /* ---------------- Init ---------------- */
+  const APP_VERSION = 'v22';
+  const buildEl = $('appVersion');
+  if (buildEl) buildEl.textContent = `Jledger · build ${APP_VERSION}`;
   buildCatGrid();
   render();
   renderList();
